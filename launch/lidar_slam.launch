@@ -1,0 +1,8 @@
+<launch>
+
+
+  <node name="lidar_odometry" pkg="lidar_slam" type="lidar_odometry" output="screen">
+    <param name="velodyne_topic"          type="string"   value="/velodyne_points" />
+    <param name="icp_config_fname"        type="string"   value="$(find lidar_slam)/cfg/icp/defaultPointToPlaneMinDistDataPointsFilter.yaml" />
+  </node>
+</launch>
