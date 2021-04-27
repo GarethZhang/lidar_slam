@@ -75,9 +75,10 @@ int main(int argc, char** argv)
 //    std::ifstream ground_truth_file(dataset_folder + ground_truth_path, std::ifstream::in);
 
     rosbag::Bag bag_out;
-    if (to_bag)
+    if (to_bag){
         output_bag_file = dataset_folder + town_number + sequence_number + output_bag_file;
         bag_out.open(output_bag_file, rosbag::bagmode::Write);
+    }
 
 //    Eigen::Matrix3d R_transform;
 //    R_transform << 0, 0, 1, -1, 0, 0, 0, -1, 0;
@@ -185,7 +186,7 @@ int main(int argc, char** argv)
             point.y = lidar_data[i].y;
             point.z = lidar_data[i].z;
             point.intensity = float_scalar[i];
-            point.ring = -1;
+            point.ring = int_scalar[i];
             point.timeINS = 0.0;
             laser_cloud_msg->points.push_back(point);
             laser_cloud_msg->width++;

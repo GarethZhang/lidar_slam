@@ -1,152 +1,159 @@
-#include <iostream>
+//
+// Created by haowei on 2021-04-22.
+//
 
-#include "pointmatcher/PointMatcher.h"
+#include "lidar_slam/lidar_odometry.h"
 
-#include "lidar_slam/utils/utils.h"
+lidar_odometry_class::lidar_odometry_class(ros::NodeHandle *nodehandle) :
+    nh_(*nodehandle),
+    first_scan_(true),
+    lastPCLCloud_(new pcl::PointCloud<pclPointType>()),
+    currPCLCloud_(new pcl::PointCloud<pclPointType>()){ // constructor
+    ROS_INFO("in class constructor of lidar_odometry_class");
+    getParams();
 
-int main() {
-    std::cout << "Using odometry component in LiDAR SLAM" << std::endl;
+    initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
+    initializePublishers();
 
-    // read in all point cloud filenames under the directory
-    std::string data_dir = "/mnt/hdd2/Carla/Town04/03/scans/";
-    std::string ext = "ply";
-    std::vector<std::string> scan_fnames;
+    initialize_icp();
 
-    listdir(data_dir, scan_fnames, ext);
+    // use default labels for point cloud here
+    PMlabels_.push_back(DP::Label("x", 1));
+    PMlabels_.push_back(DP::Label("y", 1));
+    PMlabels_.push_back(DP::Label("z", 1));
+    PMlabels_.push_back(DP::Label("w", 1));
 
-    // read in two consecutive point cloud
-    int s = 1000, e = s + 10; // randomly select two frames
-    std::string s_scan_fname = scan_fnames[s];
-    std::string e_scan_fname = scan_fnames[e];
-    Eigen::MatrixXd s_scan, e_scan;
-    load_ply(data_dir + s_scan_fname, s_scan);
-    load_ply(data_dir + e_scan_fname, e_scan);
+    // set identity for initial odometry
+    T_o_s_odom_.setIdentity();
+    T_o_s_.setIdentity();
+}
 
-    /////////////////////////////////
-    // odometry using libpointmatcher
-    /////////////////////////////////
+//member helper function to set up subscribers;
+// note odd syntax: &lidar_odometry_class::subscriberCallback is a pointer to a member function of lidar_odometry_class
+// "this" keyword is required, to refer to the current instance of lidar_odometry_class
+void lidar_odometry_class::initializeSubscribers() {
+    ROS_INFO("Initializing Subscribers");
+    sub_ = nh_.subscribe(velodyne_topic_, 1, &lidar_odometry_class::velodyneCallback, this);
+    // add more subscribers here, as needed
+}
 
-    typedef PointMatcher<double> PM;
-    typedef PM::DataPoints DP;
+//member helper function to set up publishers;
+void lidar_odometry_class::initializePublishers() {
+    ROS_INFO("Initializing Publishers");
+    pub_ = nh_.advertise<nav_msgs::Odometry>("/lidar_slam/odometry", 1, true);
+    //add more publishers, as needed
+    // note: COULD make pub_ a public member function, if want to use it within "main()"
+}
 
-    DP::Labels labels;
-    labels.push_back(DP::Label("x", 1));
-    labels.push_back(DP::Label("y", 1));
-    labels.push_back(DP::Label("z", 1));
-    labels.push_back(DP::Label("w", 1));
+// a simple callback function, used by the example subscriber.
+// note, though, use of member variables and access to pub_ (which is a member method)
+void lidar_odometry_class::velodyneCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
+    if (first_scan_){
+        pcl::fromROSMsg(*msg, *lastPCLCloud_);
+        first_scan_ = false;
+        return;
+    }
+    else{
+        pcl::fromROSMsg(*msg, *currPCLCloud_);
 
-    // load point cloud
-    DP ref(s_scan, labels);
-    DP data(e_scan, labels);
+        ////////////////////////////////
+        // use libpointmatcher to do ICP
+        ////////////////////////////////
+        // convert to Eigen
+        PMat lastEigenCloud, currEigenCloud;
+        pclPointCloudToEigen(*lastPCLCloud_, lastEigenCloud);
+        pclPointCloudToEigen(*currPCLCloud_, currEigenCloud);
 
-    // Create the default ICP algorithm
-    PM::ICP icp;
-    PointMatcherSupport::Parametrizable::Parameters params;
-    std::string name;
+        // load into DP
+        DP lastPMCloud(lastEigenCloud, PMlabels_);
+        DP currPMCloud(currEigenCloud, PMlabels_);
 
-    // Prepare reading filters
-    name = "MinDistDataPointsFilter";
-    params["minDist"] = "1.0";
-    std::shared_ptr<PM::DataPointsFilter> minDist_read =
-            PM::get().DataPointsFilterRegistrar.create(name, params);
-    params.clear();
+        // apply ICP and compound to odometry
+        T_ = icp(currPMCloud, lastPMCloud);
+        if (T_o_s_odom_.size() == 0) T_o_s_odom_ = T_;
+        else T_o_s_odom_ = T_o_s_odom_ * T_;
 
-//    name = "RandomSamplingDataPointsFilter";
-//    params["prob"] = "0.05";
-//    std::shared_ptr<PM::DataPointsFilter> rand_read =
-//            PM::get().DataPointsFilterRegistrar.create(name, params);
-//    params.clear();
+        // publish navsat odom msg
+        nav_msgs::Odometry odom_msg;
+        publishPoseToOdom(T_o_s_odom_, odom_msg);
+        odom_msg.header.seq = msg->header.seq;
+        odom_msg.header.frame_id = "/map";
+        odom_msg.child_frame_id = "/velodyne_odom";
+        odom_msg.header.stamp = msg->header.stamp;
+        pub_.publish(odom_msg);
 
-    // Prepare reference filters
-    name = "SamplingSurfaceNormalDataPointsFilter";
-    params["knn"] = "10";
-    params["ratio"] = "0.666666";
-    params["samplingMethod"] = "1";
-    params["averageExistingDescriptors"] = "0";
-    std::shared_ptr<PM::DataPointsFilter> sampSurfNorm_ref =
-            PM::get().DataPointsFilterRegistrar.create(name, params);
-    params.clear();
+        // broadcast the transform between frames
+        sendTransform(T_o_s_odom_, "/velodyne_odom", "map", msg->header.stamp);
+//        tf::Transform T_o_s_odom = PointMatcher_ros::eigenMatrixToTransform<double>(T_o_s_odom_);
+//        tf::StampedTransform T_o_s_odom_stamped
+//        T_o_s_broadcaster_.sendTransform()
 
-    // Prepare matching function
-    name = "KDTreeMatcher";
-    params["knn"] = "1";
-    params["epsilon"] = "0";
-    std::shared_ptr<PM::Matcher> kdtree =
-            PM::get().MatcherRegistrar.create(name, params);
-    params.clear();
+        // update last cloud
+        *lastPCLCloud_ = *currPCLCloud_;
+    }
+}
 
-    // Prepare outlier filters
-    name = "TrimmedDistOutlierFilter";
-    params["ratio"] = "0.75";
-    std::shared_ptr<PM::OutlierFilter> trim =
-            PM::get().OutlierFilterRegistrar.create(name, params);
-    params.clear();
+void lidar_odometry_class::publishPoseToOdom(PM::TransformationParameters T, nav_msgs::Odometry& msg){
+    RMat R_last_curr = T.topLeftCorner(3, 3);
+    Vec t_last_curr = T.block<3,1>(0, 3);
 
-    // Prepare error minimization
-    name = "PointToPlaneErrorMinimizer";
-    std::shared_ptr<PM::ErrorMinimizer> pointToPlane =
-            PM::get().ErrorMinimizerRegistrar.create(name);
+    tf::Matrix3x3 R;
+    tf::Vector3 t;
+    tf::matrixEigenToTF(R_last_curr, R);
+    tf::vectorEigenToTF(t_last_curr, t);
+    tf::Transform T_last_curr(R, t);
 
-    // Prepare transformation checker filters
-    name = "CounterTransformationChecker";
-    params["maxIterationCount"] = "40";
-    std::shared_ptr<PM::TransformationChecker> maxIter =
-            PM::get().TransformationCheckerRegistrar.create(name, params);
-    params.clear();
+    tf::Quaternion q;
+    R.getRotation(q);
 
-    name = "DifferentialTransformationChecker";
-    params["minDiffRotErr"] = "0.001";
-    params["minDiffTransErr"] = "0.01";
-    params["smoothLength"] = "4";
-    std::shared_ptr<PM::TransformationChecker> diff =
-            PM::get().TransformationCheckerRegistrar.create(name, params);
-    params.clear();
+    msg.pose.pose.orientation.x = q.x();
+    msg.pose.pose.orientation.y = q.y();
+    msg.pose.pose.orientation.z = q.z();
+    msg.pose.pose.orientation.w = q.w();
 
-    // Prepare inspector
-    std::shared_ptr<PM::Inspector> nullInspect =
-            PM::get().InspectorRegistrar.create("NullInspector");
+    msg.pose.pose.position.x = t.x();
+    msg.pose.pose.position.y = t.y();
+    msg.pose.pose.position.z = t.z();
+}
 
-    // Prepare transformation
-    std::shared_ptr<PM::Transformation> rigidTrans =
-            PM::get().TransformationRegistrar.create("RigidTransformation");
+void lidar_odometry_class::getParams() {
+    nh_.param<std::string>("velodyne_topic",    velodyne_topic_,     "/velodyne_points");
+    nh_.param<std::string>("icp_config_fname",  icp_config_fname_,
+                           "/home/haowei/MEGA/Research/src/ros_ws/src/lidar_slam/cfg/icp/defaultPointToPlaneMinDistDataPointsFilter.yaml");
+}
 
-    // Build ICP solution
-    icp.readingDataPointsFilters.push_back(minDist_read);
+void lidar_odometry_class::initialize_icp(){
+    // load ICP config
+    std::ifstream ifs(icp_config_fname_);
+    icp.loadFromYaml(ifs);
+}
 
-    icp.referenceDataPointsFilters.push_back(sampSurfNorm_ref);
+void lidar_odometry_class::pclPointCloudToEigen(const pcl::PointCloud<pclPointType>& cloudIn, PMat& cloudOut) {
+    cloudOut = PMat::Ones(4, cloudIn.points.size());
+    int i = 0;
+    for (auto point:cloudIn.points){
+        cloudOut(0, i) = point.x;
+        cloudOut(1, i) = point.y;
+        cloudOut(2, i) = point.z;
+        cloudOut(3, i) = point.intensity;
+        i++;
+    }
+}
 
-    icp.matcher = kdtree;
+void lidar_odometry_class::sendTransform(const TMat T, std::string src_frame, std::string tgt_frame, ros::Time time) {
+    tf::Transform T_tgt_src = PointMatcher_ros::eigenMatrixToTransform<double>(T);
+    tf::StampedTransform T_tgt_src_stamped = tf::StampedTransform(T_tgt_src, time, src_frame, tgt_frame);
+    tf_broadcaster_.sendTransform(T_tgt_src_stamped);
+}
 
-    icp.outlierFilters.push_back(trim);
-
-    icp.errorMinimizer = pointToPlane;
-
-    icp.transformationCheckers.push_back(maxIter);
-    icp.transformationCheckers.push_back(diff);
-
-    // toggle to write vtk files per iteration
-    icp.inspector = nullInspect;
-    //icp.inspector = vtkInspect;
-
-    icp.transformations.push_back(rigidTrans);
-
-    // Compute the transformation to express data in ref
-    PM::TransformationParameters T = icp(data, ref);
-
-    // Transform test to express it in ref
-    DP data_out(data);
-//    Eigen::Matrix4d mat = Eigen::Matrix4d::Identity();
-    icp.transformations.apply(data_out, T);
-
-    // Save to disk
-    std::string ref_save_fname = "../test/ref.ply";
-    std::string data_save_fname = "../test/data.ply";
-    std::string data_out_save_fname = "../test/data_out.ply";
-    write_ply(ref_save_fname, ref.features);
-    write_ply(data_save_fname, data.features);
-    write_ply(data_out_save_fname, data_out.features);
-
-    std::cout << "Final transformation:" << std::endl << T << std::endl;
-
+int main(int argc, char **argv) {
+    // ROS set-ups:
+    ros::init(argc, argv, "lidar_odometry_class"); //node name
+    ros::NodeHandle nh("~"); // cfreate a node handle; need to pass this to the class constructor
+    ROS_INFO("main: instantiating an object of type lidar_odometry_class");
+    lidar_odometry_class lidar_odometry_class(
+            &nh);  //instantiate an lidar_odometry_class object and pass in pointer to nodehandle for constructor to use
+    ROS_INFO("main: going into spin; let the callbacks do all the work");
+    ros::spin();
     return 0;
 }

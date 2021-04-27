@@ -9,6 +9,7 @@ project(lidar_slam)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
+        nav_msgs
         roscpp
         rospy
         rosbag
@@ -17,11 +18,15 @@ find_package(catkin REQUIRED COMPONENTS
         tf
         semantic_labeller
         velodyne_pointcloud
+        pcl_conversions
+        tf_conversions
+        libpointmatcher
+        libpointmatcher_ros
         )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(libpointmatcher 1.1.0 REQUIRED)
+#find_package(libpointmatcher 1.1.0 REQUIRED)
 
 message(STATUS "Using libpointmatcher version ${libpointmatcher_VERSION}")
 
@@ -116,7 +121,7 @@ find_package(PCL REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
         #  INCLUDE_DIRS include
-        #  LIBRARIES lidar_slam
+          LIBRARIES lidar_slam semantic_labeller
         #  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs
         #  DEPENDS system_lib
 )
@@ -163,25 +168,26 @@ add_executable(lidar_odometry src/lidar_odometry.cpp)
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(utils
-        cloud
-        npm_ply_in
-        npm_ply_out
+#        cloud
+#        npm_ply_in
+#        npm_ply_out
         Eigen3::Eigen
         ${catkin_LIBRARIES}
         )
 
 target_link_libraries(carla_helper
-        cloud
+#        cloud
         utils
         ${catkin_LIBRARIES}
         ${PCL_LIBRARIES}
         )
 
 target_link_libraries(lidar_odometry
-        cloud
+#        cloud
         utils
         ${catkin_LIBRARIES}
         ${libpointmatcher_LIBRARIES}
+        ${PCL_LIBRARIES}
         )
 
 #############
