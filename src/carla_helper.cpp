@@ -22,6 +22,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include "geometry_msgs/PoseStamped.h"
 
 #include "lidar_slam/utils/utils.h"
 #include "semantic_labeller/cloud/cloud.h"
@@ -43,11 +44,12 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "carla_helper");
     ros::NodeHandle n("~");
-    std::string dataset_folder, town_number, sequence_number, velodyne_topic, output_bag_file;
+    std::string dataset_folder, town_number, sequence_number, velodyne_topic, pose_topic, output_bag_file;
     n.getParam("dataset_folder", dataset_folder);
     n.getParam("town_number", town_number);
     n.getParam("sequence_number", sequence_number);
     n.getParam("velodyne_topic", velodyne_topic);
+    n.getParam("pose_topic", pose_topic);
     std::cout << "Reading sequence " << sequence_number << " from " << town_number << " from " << dataset_folder << '\n';
     bool to_bag;
     n.getParam("to_bag", to_bag);
@@ -58,6 +60,7 @@ int main(int argc, char** argv)
     publish_delay = publish_delay <= 0 ? 1 : publish_delay;
 
     ros::Publisher pub_laser_cloud = n.advertise<sensor_msgs::PointCloud2>(velodyne_topic, 1, true);
+    ros::Publisher pub_laser_pose = n.advertise<geometry_msgs::PoseStamped>(pose_topic, 1, true);
 
 //    image_transport::ImageTransport it(n);
 //    image_transport::Publisher pub_image_left = it.advertise("/image_left", 2);
@@ -70,6 +73,7 @@ int main(int argc, char** argv)
 
 //    std::string timestamp_path = "sequences/" + sequence_number + "/times.txt";
     std::ifstream timestamp_file(dataset_folder + town_number + sequence_number + "timestamps.txt", std::ifstream::in);
+    std::ifstream transforms_file(dataset_folder + town_number + sequence_number + "transforms.txt", std::ifstream::in);
 
 //    std::string ground_truth_path = "results/" + sequence_number + ".txt";
 //    std::ifstream ground_truth_file(dataset_folder + ground_truth_path, std::ifstream::in);
@@ -90,58 +94,14 @@ int main(int argc, char** argv)
     std::vector<std::string> scan_fnames;
     listdir(scan_dir, scan_fnames, ext);
 
-    std::string line;
+    std::string timestamp_line, transforms_line;
     std::size_t line_num = 0;
 
     ros::Rate r(10.0 / publish_delay);
-    while (std::getline(timestamp_file, line) && ros::ok())
+    while (std::getline(timestamp_file, timestamp_line) && std::getline(transforms_file, transforms_line) && ros::ok())
     {
-        float timestamp = stof(line);
-//        std::stringstream left_image_path, right_image_path;
-//        left_image_path << dataset_folder << "sequences/" + sequence_number + "/image_0/" << std::setfill('0') << std::setw(6) << line_num << ".png";
-//        cv::Mat left_image = cv::imread(left_image_path.str(), CV_LOAD_IMAGE_GRAYSCALE);
-//        right_image_path << dataset_folder << "sequences/" + sequence_number + "/image_1/" << std::setfill('0') << std::setw(6) << line_num << ".png";
-//        cv::Mat right_image = cv::imread(right_image_path.str(), CV_LOAD_IMAGE_GRAYSCALE);
+        float timestamp = stof(timestamp_line);
 
-//        std::getline(ground_truth_file, line);
-//        std::stringstream pose_stream(line);
-//        std::string s;
-//        Eigen::Matrix<double, 3, 4> gt_pose;
-//        for (std::size_t i = 0; i < 3; ++i)
-//        {
-//            for (std::size_t j = 0; j < 4; ++j)
-//            {
-//                std::getline(pose_stream, s, ' ');
-//                gt_pose(i, j) = stof(s);
-//            }
-//        }
-
-//        Eigen::Quaterniond q_w_i(gt_pose.topLeftCorner<3, 3>());
-//        Eigen::Quaterniond q = q_transform * q_w_i;
-//        q.normalize();
-//        Eigen::Vector3d t = q_transform * gt_pose.topRightCorner<3, 1>();
-//
-//        odomGT.header.stamp = ros::Time().fromSec(timestamp);
-//        odomGT.pose.pose.orientation.x = q.x();
-//        odomGT.pose.pose.orientation.y = q.y();
-//        odomGT.pose.pose.orientation.z = q.z();
-//        odomGT.pose.pose.orientation.w = q.w();
-//        odomGT.pose.pose.position.x = t(0);
-//        odomGT.pose.pose.position.y = t(1);
-//        odomGT.pose.pose.position.z = t(2);
-//        pubOdomGT.publish(odomGT);
-//
-//        geometry_msgs::PoseStamped poseGT;
-//        poseGT.header = odomGT.header;
-//        poseGT.pose = odomGT.pose.pose;
-//        pathGT.header.stamp = odomGT.header.stamp;
-//        pathGT.poses.push_back(poseGT);
-//        pubPathGT.publish(pathGT);
-
-        // read lidar point cloud
-//        std::stringstream lidar_data_path;
-//        lidar_data_path << dataset_folder << town_number << sequence_number + "scans/"
-//                        << std::setfill('0') << std::setw(6) << line_num << ".bin";
         std::string lidar_data_path = scan_dir + scan_fnames[line_num];
         ROS_INFO("lidar_data_path: %s", lidar_data_path.c_str());
         std::vector<PointXYZ> lidar_data;
@@ -150,36 +110,10 @@ int main(int argc, char** argv)
         std::vector<int> int_scalar;
         std::string int_scalar_name = "label";
         load_cloud(lidar_data_path, lidar_data, float_scalar, float_scalar_name, int_scalar, int_scalar_name);
-//        std::vector<float> lidar_data = read_lidar_data(lidar_data_path.str());
         std::cout << "totally " << lidar_data.size() << " points in this lidar frame \n";
 
-//        std::vector<Eigen::Vector3d> lidar_points;
-//        std::vector<float> lidar_intensities;
-//        pcl::PointCloud<pcl::PointXYZI> laser_cloud;
-//        for (std::size_t i = 0; i < lidar_data.size(); i += 4)
-//        {
-//            lidar_points.emplace_back(lidar_data[i], lidar_data[i+1], lidar_data[i+2]);
-//            lidar_intensities.push_back(lidar_data[i+3]);
-//
-//            pcl::PointXYZI point;
-//            point.x = lidar_data[i];
-//            point.y = lidar_data[i + 1];
-//            point.z = lidar_data[i + 2];
-//            point.intensity = lidar_data[i + 3];
-//            laser_cloud.push_back(point);
-//        }
         velodyne_rawdata::VPointCloud::Ptr laser_cloud_msg(new velodyne_rawdata::VPointCloud());
         velodyne_rawdata::VPoint point;
-//        pcl::PointCloud<pcl::PointXYZI> laser_cloud;
-//        for (std::size_t i = 0; i < lidar_data.size(); i++)
-//        {
-//            pcl::PointXYZI point;
-//            point.x = lidar_data[i].x;
-//            point.y = lidar_data[i].y;
-//            point.z = lidar_data[i].z;
-//            point.intensity = float_scalar[i];
-//            laser_cloud.push_back(point);
-//        }
 
         for (std::size_t i = 0; i < lidar_data.size(); i++){
             point.x = lidar_data[i].x;
@@ -195,25 +129,53 @@ int main(int argc, char** argv)
         laser_cloud_msg->header.frame_id = "/velodyne";
         laser_cloud_msg->height = 1;
 
-
-//        sensor_msgs::PointCloud2 laser_cloud_msg;
-//        pcl::toROSMsg(laser_cloud, laser_cloud_msg);
-//        laser_cloud_msg.header.stamp = ros::Time().fromSec(timestamp);
-//        laser_cloud_msg.header.frame_id = "/velodyne";
         pub_laser_cloud.publish(laser_cloud_msg);
 
-//        sensor_msgs::ImagePtr image_left_msg = cv_bridge::CvImage(laser_cloud_msg.header, "mono8", left_image).toImageMsg();
-//        sensor_msgs::ImagePtr image_right_msg = cv_bridge::CvImage(laser_cloud_msg.header, "mono8", right_image).toImageMsg();
-//        pub_image_left.publish(image_left_msg);
-//        pub_image_right.publish(image_right_msg);
+        // get ground truth transform
+        std::vector<std::string> words;
+        boost::split(words, transforms_line, boost::is_any_of(" "), boost::token_compress_on);
+        Eigen::Matrix4d T_o_s;
+        T_o_s(0, 0) = atof(words[0].c_str());
+        T_o_s(0, 1) = atof(words[1].c_str());
+        T_o_s(0, 2) = atof(words[2].c_str());
+        T_o_s(0, 3) = atof(words[3].c_str());
+        T_o_s(1, 0) = atof(words[4].c_str());
+        T_o_s(1, 1) = atof(words[5].c_str());
+        T_o_s(1, 2) = atof(words[6].c_str());
+        T_o_s(1, 3) = atof(words[7].c_str());
+        T_o_s(2, 0) = atof(words[8].c_str());
+        T_o_s(2, 1) = atof(words[9].c_str());
+        T_o_s(2, 2) = atof(words[10].c_str());
+        T_o_s(2, 3) = atof(words[11].c_str());
+        T_o_s(3, 0) = atof(words[12].c_str());
+        T_o_s(3, 1) = atof(words[13].c_str());
+        T_o_s(3, 2) = atof(words[14].c_str());
+        T_o_s(3, 3) = atof(words[15].c_str());
+        Eigen::Matrix3d R_o_s = T_o_s.block<3,3>(0,0);
+        Eigen::Vector3d t_o_s = T_o_s.block<3,1>(0,3);
+        Eigen::Quaterniond q(R_o_s);
+
+        geometry_msgs::PoseStamped pose_stamped;
+        geometry_msgs::Pose pose;
+        pose.position.x = t_o_s(0);
+        pose.position.y = t_o_s(1);
+        pose.position.z = t_o_s(2);
+        pose.orientation.x = q.x();
+        pose.orientation.y = q.y();
+        pose.orientation.z = q.z();
+        pose.orientation.w = q.w();
+        pose_stamped.pose = pose;
+
+        uint32_t sec = (long) timestamp;
+        uint32_t nsec = (long) ((timestamp - sec) * 1e9);
+        pose_stamped.header.stamp = ros::Time(sec, nsec);
+        pose_stamped.header.frame_id = "/map";
+        pub_laser_pose.publish(pose_stamped);
 
         if (to_bag)
         {
-//            bag_out.write("/image_left", ros::Time::now(), image_left_msg);
-//            bag_out.write("/image_right", ros::Time::now(), image_right_msg);
             bag_out.write(velodyne_topic, ros::Time::now(), laser_cloud_msg);
-//            bag_out.write("/path_gt", ros::Time::now(), pathGT);
-//            bag_out.write("/odometry_gt", ros::Time::now(), odomGT);
+            bag_out.write(pose_topic, ros::Time::now(), pose_stamped);
         }
 
         line_num ++;
