@@ -20,19 +20,20 @@ find_package(catkin REQUIRED COMPONENTS
         velodyne_pointcloud
         pcl_conversions
         tf_conversions
-        libpointmatcher
         libpointmatcher_ros
         )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-#find_package(libpointmatcher 1.1.0 REQUIRED)
+find_package(libpointmatcher CONFIG)
 
 message(STATUS "Using libpointmatcher version ${libpointmatcher_VERSION}")
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 find_package(PCL REQUIRED)
+
+find_package(Ceres REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -113,17 +114,17 @@ find_package(PCL REQUIRED)
 ###################################
 ## catkin specific configuration ##
 ###################################
-## The catkin_package macro generates cmake config files for your package
-## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if your package contains header files
-## LIBRARIES: libraries you create in this project that dependent projects also need
-## CATKIN_DEPENDS: catkin_packages dependent projects also need
-## DEPENDS: system dependencies of this project that dependent projects also need
+# The catkin_package macro generates cmake config files for your package
+# Declare things to be passed to dependent projects
+# INCLUDE_DIRS: uncomment this if your package contains header files
+# LIBRARIES: libraries you create in this project that dependent projects also need
+# CATKIN_DEPENDS: catkin_packages dependent projects also need
+# DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-        #  INCLUDE_DIRS include
+          INCLUDE_DIRS include
           LIBRARIES lidar_slam semantic_labeller
-        #  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs
-        #  DEPENDS system_lib
+          CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs libpointmatcher
+#          DEPENDS libpointmatcher
 )
 
 ###########
@@ -136,12 +137,21 @@ include_directories(
         include
         ${catkin_INCLUDE_DIRS}
         ${PCL_INCLUDE_DIRS}
-        ${libpointmatch_INCLUDE_DIRS}$
+        ${libpointmatcher_INCLUDE_DIRS}
+        ${CERES_INCLUDE_DIRS}
 )
 
 # Declare a C++ library
 add_library(utils
         include/lidar_slam/utils/utils.cpp
+        )
+
+add_library(se3_utils
+        include/lidar_slam/se3_utils/se3_utils.cpp
+        )
+
+add_library(nearest_neighbor
+        include/lidar_slam/nearest_neighbor/nearest_neighbor.cpp
         )
 
 ## Add cmake target dependencies of the library
@@ -156,6 +166,8 @@ add_executable(carla_helper src/carla_helper.cpp)
 
 add_executable(lidar_odometry src/lidar_odometry.cpp)
 
+add_executable(ceres_icp src/ceres_icp.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -168,26 +180,46 @@ add_executable(lidar_odometry src/lidar_odometry.cpp)
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(utils
-#        cloud
-#        npm_ply_in
-#        npm_ply_out
         Eigen3::Eigen
         ${catkin_LIBRARIES}
         )
 
+target_link_libraries(se3_utils
+        Eigen3::Eigen
+        ${catkin_LIBRARIES}
+        )
+
+target_link_libraries(nearest_neighbor
+        utils
+        se3_utils
+        Eigen3::Eigen
+        ${catkin_LIBRARIES}
+        ${libpointmatcher_LIBRARIES}
+        ${CERES_LIBRARIES}
+        )
+
 target_link_libraries(carla_helper
-#        cloud
         utils
         ${catkin_LIBRARIES}
         ${PCL_LIBRARIES}
         )
 
 target_link_libraries(lidar_odometry
-#        cloud
         utils
         ${catkin_LIBRARIES}
         ${libpointmatcher_LIBRARIES}
         ${PCL_LIBRARIES}
+        ${CERES_LIBRARIES}
+        )
+
+target_link_libraries(ceres_icp
+        utils
+        se3_utils
+        nearest_neighbor
+        ${catkin_LIBRARIES}
+        ${libpointmatcher_LIBRARIES}
+        #        ${PCL_LIBRARIES}
+        ${CERES_LIBRARIES}
         )
 
 #############
