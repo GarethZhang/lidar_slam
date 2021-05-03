@@ -1,12 +1,3 @@
-// example_ros_class.h header file //
-// wsn; Feb, 2015
-// include this file in "example_ros_class.cpp"
-// here's a good trick--should always do this with header files:
-// create a unique mnemonic for this header file, so it will get included if needed,
-// but will not get included multiple times
-//
-// Created by haowei on 2021-04-23.
-//
 
 #ifndef LIDAR_SLAM_LIDAR_ODOMETRY_H
 #define LIDAR_SLAM_LIDAR_ODOMETRY_H
@@ -19,35 +10,38 @@
 #include <ros/ros.h> //ALWAYS need to include this
 #include <sensor_msgs/PointCloud2.h>
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
 #include "tf/transform_broadcaster.h"
 #include "tf_conversions/tf_eigen.h"
 
 #include "pcl/point_cloud.h"
 #include "pcl_conversions/pcl_conversions.h"
 
+#include "utils/utils.h"
 #include "lidar_slam/common.h"
 #include "pointmatcher_ros/transform.h"
 
-// define a class, including a constructor, member variables and member functions
 class lidar_odometry_class {
 public:
     lidar_odometry_class(
-            ros::NodeHandle *nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
-    // may choose to define public methods or public variables, if desired
+            ros::NodeHandle *nodehandle);
 private:
-    // put private member data here;  "private" data will only be available to member functions of this class;
-    ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor
-    // some objects to support subscriber, and publisher
-    ros::Subscriber sub_; //these will be set up within the class constructor, hiding these ugly details
-    ros::Publisher pub_;
+    ros::NodeHandle nh_;
+
+    ros::Subscriber sub_;
+    ros::Publisher pub_, traj_pub_;
 
     tf::TransformBroadcaster tf_broadcaster_;
+
+    nav_msgs::Path traj_path_;
+    uint32_t max_path_length_;
 
     std::string velodyne_topic_;
     std::string icp_config_fname_;
 
-    // whether this is the first scan
-    bool first_scan_;
+    bool first_scan_; // whether this is the first scan
+    uint32_t seq_num_, num_skipped_scans_;
+    double dist_travel_;
 
     // default labels for point cloud
     DP::Labels PMlabels_;
@@ -62,20 +56,23 @@ private:
     pcl::PointCloud<pclPointType>::Ptr lastPCLCloud_;
     pcl::PointCloud<pclPointType>::Ptr currPCLCloud_;
 
-    // member methods as well:
-    void initializeSubscribers(); // we will define some helper methods to encapsulate the gory details of initializing subscribers, publishers and services
+    // intializers
+    void initializeSubscribers();
     void initializePublishers();
-
-    void velodyneCallback(const sensor_msgs::PointCloud2ConstPtr &message_holder); //prototype for callback of example subscriber
-
+    void initializeVariables();
+    void initializeICP();
     void getParams();
 
-    void initialize_icp();
+    // Callbacks
+    void velodyneCallback(const sensor_msgs::PointCloud2ConstPtr &message_holder);
 
+    // Utility Functions
     static void pclPointCloudToEigen(const pcl::PointCloud<pclPointType>& cloudIn, PMat& cloudOut);
+    void sendTransform(const TMat& T, const std::string& src_frame, const std::string& tgt_frame, ros::Time time);
+    void publishPath(const TMat& T, const std::string& frame, ros::Time time);
+    void saveForVis(const TMat& T, const std::string& fname);
+    void updateDistTravel(const TMat& T);
+    void checkSeqNum(const uint32_t& seq_num);
 
-    void publishPoseToOdom(PM::TransformationParameters T, nav_msgs::Odometry &msg);
-
-    void sendTransform(const TMat T, std::string src_frame, std::string tgt_frame, ros::Time time);
-}; // note: a class definition requires a semicolon at the end of the definition
-#endif  // this closes the header-include trick...ALWAYS need one of these to match
+};
+#endif

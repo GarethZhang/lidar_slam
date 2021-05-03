@@ -1,21 +1,18 @@
-//
-// Created by haowei on 2021-04-22.
-//
 
 #include "lidar_slam/lidar_odometry.h"
 
 lidar_odometry_class::lidar_odometry_class(ros::NodeHandle *nodehandle) :
     nh_(*nodehandle),
-    first_scan_(true),
     lastPCLCloud_(new pcl::PointCloud<pclPointType>()),
     currPCLCloud_(new pcl::PointCloud<pclPointType>()){ // constructor
     ROS_INFO("in class constructor of lidar_odometry_class");
     getParams();
 
+    initializeVariables();
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
     initializePublishers();
 
-    initialize_icp();
+    initializeICP();
 
     // use default labels for point cloud here
     PMlabels_.push_back(DP::Label("x", 1));
@@ -28,26 +25,28 @@ lidar_odometry_class::lidar_odometry_class(ros::NodeHandle *nodehandle) :
     T_o_s_.setIdentity();
 }
 
-//member helper function to set up subscribers;
-// note odd syntax: &lidar_odometry_class::subscriberCallback is a pointer to a member function of lidar_odometry_class
-// "this" keyword is required, to refer to the current instance of lidar_odometry_class
 void lidar_odometry_class::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
     sub_ = nh_.subscribe(velodyne_topic_, 1, &lidar_odometry_class::velodyneCallback, this);
-    // add more subscribers here, as needed
 }
 
-//member helper function to set up publishers;
 void lidar_odometry_class::initializePublishers() {
     ROS_INFO("Initializing Publishers");
     pub_ = nh_.advertise<nav_msgs::Odometry>("/lidar_slam/odometry", 1, true);
-    //add more publishers, as needed
-    // note: COULD make pub_ a public member function, if want to use it within "main()"
+    traj_pub_ = nh_.advertise<nav_msgs::Path>("/lidar_slam/odom_traj", 1, true);
 }
 
-// a simple callback function, used by the example subscriber.
-// note, though, use of member variables and access to pub_ (which is a member method)
+void lidar_odometry_class::initializeVariables() {
+    seq_num_ = -1;
+    num_skipped_scans_ = 0;
+    first_scan_ = true;
+    max_path_length_ = 200;
+    dist_travel_ = 0.0;
+}
+
 void lidar_odometry_class::velodyneCallback(const sensor_msgs::PointCloud2ConstPtr &msg) {
+    checkSeqNum(msg->header.seq);
+
     if (first_scan_){
         pcl::fromROSMsg(*msg, *lastPCLCloud_);
         first_scan_ = false;
@@ -73,47 +72,21 @@ void lidar_odometry_class::velodyneCallback(const sensor_msgs::PointCloud2ConstP
         if (T_o_s_odom_.size() == 0) T_o_s_odom_ = T_;
         else T_o_s_odom_ = T_o_s_odom_ * T_;
 
-        // publish navsat odom msg
-        nav_msgs::Odometry odom_msg;
-        publishPoseToOdom(T_o_s_odom_, odom_msg);
-        odom_msg.header.seq = msg->header.seq;
-        odom_msg.header.frame_id = "/map";
-        odom_msg.child_frame_id = "/velodyne_odom";
-        odom_msg.header.stamp = msg->header.stamp;
-        pub_.publish(odom_msg);
+        DP data_out(currPMCloud);
+        icp.transformations.apply(data_out, T_);
+
+        // update distance travelled
+        updateDistTravel(T_);
 
         // broadcast the transform between frames
-        sendTransform(T_o_s_odom_, "/velodyne_odom", "map", msg->header.stamp);
-//        tf::Transform T_o_s_odom = PointMatcher_ros::eigenMatrixToTransform<double>(T_o_s_odom_);
-//        tf::StampedTransform T_o_s_odom_stamped
-//        T_o_s_broadcaster_.sendTransform()
+        sendTransform(T_o_s_odom_, "/map", "/velodyne", msg->header.stamp);
+
+        // publish path
+        publishPath(T_o_s_odom_, "/map", msg->header.stamp);
 
         // update last cloud
         *lastPCLCloud_ = *currPCLCloud_;
     }
-}
-
-void lidar_odometry_class::publishPoseToOdom(PM::TransformationParameters T, nav_msgs::Odometry& msg){
-    RMat R_last_curr = T.topLeftCorner(3, 3);
-    Vec t_last_curr = T.block<3,1>(0, 3);
-
-    tf::Matrix3x3 R;
-    tf::Vector3 t;
-    tf::matrixEigenToTF(R_last_curr, R);
-    tf::vectorEigenToTF(t_last_curr, t);
-    tf::Transform T_last_curr(R, t);
-
-    tf::Quaternion q;
-    R.getRotation(q);
-
-    msg.pose.pose.orientation.x = q.x();
-    msg.pose.pose.orientation.y = q.y();
-    msg.pose.pose.orientation.z = q.z();
-    msg.pose.pose.orientation.w = q.w();
-
-    msg.pose.pose.position.x = t.x();
-    msg.pose.pose.position.y = t.y();
-    msg.pose.pose.position.z = t.z();
 }
 
 void lidar_odometry_class::getParams() {
@@ -122,7 +95,7 @@ void lidar_odometry_class::getParams() {
                            "/home/haowei/MEGA/Research/src/ros_ws/src/lidar_slam/cfg/icp/defaultPointToPlaneMinDistDataPointsFilter.yaml");
 }
 
-void lidar_odometry_class::initialize_icp(){
+void lidar_odometry_class::initializeICP(){
     // load ICP config
     std::ifstream ifs(icp_config_fname_);
     icp.loadFromYaml(ifs);
@@ -140,14 +113,47 @@ void lidar_odometry_class::pclPointCloudToEigen(const pcl::PointCloud<pclPointTy
     }
 }
 
-void lidar_odometry_class::sendTransform(const TMat T, std::string src_frame, std::string tgt_frame, ros::Time time) {
+void lidar_odometry_class::sendTransform(const TMat& T, const std::string& src_frame, const std::string& tgt_frame, ros::Time time) {
     tf::Transform T_tgt_src = PointMatcher_ros::eigenMatrixToTransform<double>(T);
     tf::StampedTransform T_tgt_src_stamped = tf::StampedTransform(T_tgt_src, time, src_frame, tgt_frame);
     tf_broadcaster_.sendTransform(T_tgt_src_stamped);
 }
 
+void lidar_odometry_class::publishPath(const TMat& T, const std::string& frame, ros::Time time) {
+    geometry_msgs::Pose pose = PointMatcher_ros::eigenMatrixToPoseMsg<double>(T);
+
+    geometry_msgs::PoseStamped pose_stamped;
+    pose_stamped.header.stamp = time;
+    pose_stamped.header.frame_id = frame;
+    pose_stamped.pose = pose;
+
+    traj_path_.header.stamp = time;
+    traj_path_.header.frame_id = frame;
+    if (traj_path_.poses.size() > max_path_length_) traj_path_.poses.erase(traj_path_.poses.begin());
+    traj_path_.poses.push_back(pose_stamped);
+    traj_pub_.publish(traj_path_);
+}
+
+void lidar_odometry_class::checkSeqNum(const uint32_t& seq_num) {
+    auto skipped_scans = seq_num - seq_num_ - 1;
+    if (skipped_scans > 0){
+        num_skipped_scans_ += skipped_scans;
+        ROS_INFO("Skip %d (%d) scans", skipped_scans, num_skipped_scans_);
+    }
+    seq_num_ = seq_num;
+}
+
+void lidar_odometry_class::saveForVis(const TMat &T, const std::string &fname) {
+    write_ply(fname, T);
+}
+
+void lidar_odometry_class::updateDistTravel(const TMat &T) {
+    dist_travel_ += sqrt(T(0, 3) * T(0, 3) +
+                            T(1, 3) * T(1, 3) +
+                            T(2, 3) * T(2, 3));
+}
+
 int main(int argc, char **argv) {
-    // ROS set-ups:
     ros::init(argc, argv, "lidar_odometry_class"); //node name
     ros::NodeHandle nh("~"); // cfreate a node handle; need to pass this to the class constructor
     ROS_INFO("main: instantiating an object of type lidar_odometry_class");
