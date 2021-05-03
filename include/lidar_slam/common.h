@@ -18,4 +18,4 @@ typedef Eigen::Vector3d Vec;
 typedef PointMatcher<double> PM;
 typedef PM::DataPoints DP;
 
-#endif //LIDAR_SLAM_COMMON_H
+#endif //COMMON_H
