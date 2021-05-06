@@ -1,5 +1,5 @@
 
-#include "lidar_slam/lidar_odometry.h"
+#include "lidar_slam/archive/lidar_odometry.h"
 
 lidar_odometry_class::lidar_odometry_class(ros::NodeHandle *nodehandle) :
     nh_(*nodehandle),

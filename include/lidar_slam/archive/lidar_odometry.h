@@ -17,8 +17,8 @@
 #include "pcl/point_cloud.h"
 #include "pcl_conversions/pcl_conversions.h"
 
-#include "utils/utils.h"
-#include "lidar_slam/common.h"
+#include "lidar_slam/utils/utils.h"
+#include "common.h"
 #include "pointmatcher_ros/transform.h"
 
 class lidar_odometry_class {

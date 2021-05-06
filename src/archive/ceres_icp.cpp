@@ -1,5 +1,5 @@
-#include "lidar_slam/nanoflann.hpp"
-#include "lidar_slam/common.h"
+#include "lidar_slam/archive/nanoflann.hpp"
+#include "lidar_slam/archive/common.h"
 
 #include "semantic_labeller/cloud/cloud.h"
 #include "lidar_slam/se3_utils/se3_utils.h"
