@@ -4,8 +4,9 @@
 
 #include "lidar_slam/subscriber/point_cloud_subscriber.h"
 
-PointCloudSubscriber::PointCloudSubscriber(ros::NodeHandle& nh, std::string topic, size_t queue_size) {
-    sub_ = nh.subscribe(topic, queue_size, &PointCloudSubscriber::callBack, this);
+PointCloudSubscriber::PointCloudSubscriber(ros::NodeHandle& nh, std::string topic, size_t queue_size):
+        nh_(nh){
+    sub_ = nh_.subscribe(topic, queue_size, &PointCloudSubscriber::callBack, this);
 }
 
 void PointCloudSubscriber::callBack(const sensor_msgs::PointCloud2ConstPtr &msg) {

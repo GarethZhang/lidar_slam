@@ -24,6 +24,8 @@ public:
 private:
     void callBack(const sensor_msgs::PointCloud2ConstPtr &msg);
 
+    ros::NodeHandle nh_;
+
     ros::Subscriber sub_;
 
     std::queue<PointCloudData> queue_;
