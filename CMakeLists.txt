@@ -168,18 +168,23 @@ add_library(nearest_neighbor
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+# use easier way to manage all srcs
+file(GLOB_RECURSE ALL_SRCS "*.cpp")
+file(GLOB_RECURSE NODE_SRCS "*_node.cpp")
+file(GLOB_RECURSE ARCHIVE_SRC "src/archive/*.cpp")
+list(REMOVE_ITEM ALL_SRCS ${NODE_SRCS})
+list(REMOVE_ITEM ALL_SRCS ${ARCHIVE_SRC})
+
 # Declare a C++ executable
 # With catkin_make all packages are built within a single CMake context
 # The recommended prefix ensures that target names across packages don't collide
 add_executable(carla_helper src/carla_helper.cpp)
 
-add_executable(lidar_odometry src/lidar_odometry.cpp)
+#add_executable(lidar_odometry src/archive/lidar_odometry.cpp)
+#
+#add_executable(ceres_icp src/archive/ceres_icp.cpp)
 
-add_executable(ceres_icp src/ceres_icp.cpp)
-
-add_executable(odometry_node src/odometry/odometry_node.cpp
-        src/odometry/odometry.cpp
-        src/subscriber/point_cloud_subscriber.cpp)
+add_executable(odometry_node src/odometry/odometry_node.cpp ${ALL_SRCS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -217,23 +222,23 @@ target_link_libraries(carla_helper
         ${PCL_LIBRARIES}
         )
 
-target_link_libraries(lidar_odometry
-        utils
-        ${catkin_LIBRARIES}
-        ${libpointmatcher_LIBRARIES}
-        ${PCL_LIBRARIES}
-        ${CERES_LIBRARIES}
-        )
-
-target_link_libraries(ceres_icp
-        utils
-        se3_utils
-        nearest_neighbor
-        ${catkin_LIBRARIES}
-        ${libpointmatcher_LIBRARIES}
-        #        ${PCL_LIBRARIES}
-        ${CERES_LIBRARIES}
-        )
+#target_link_libraries(lidar_odometry
+#        utils
+#        ${catkin_LIBRARIES}
+#        ${libpointmatcher_LIBRARIES}
+#        ${PCL_LIBRARIES}
+#        ${CERES_LIBRARIES}
+#        )
+#
+#target_link_libraries(ceres_icp
+#        utils
+#        se3_utils
+#        nearest_neighbor
+#        ${catkin_LIBRARIES}
+#        ${libpointmatcher_LIBRARIES}
+#        #        ${PCL_LIBRARIES}
+#        ${CERES_LIBRARIES}
+#        )
 
 target_link_libraries(odometry_node
         ${catkin_LIBRARIES}
