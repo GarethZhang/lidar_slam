@@ -35,6 +35,14 @@ find_package(PCL REQUIRED)
 
 find_package(Ceres REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
+
+set(ALL_TARGET_LIBRARIES "")
+
+include(cmake/glog.cmake)
+
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -139,6 +147,7 @@ include_directories(
         ${PCL_INCLUDE_DIRS}
         ${libpointmatcher_INCLUDE_DIRS}
         ${CERES_INCLUDE_DIRS}
+        ${YAML_CPP_INCLUDEDIR}
 )
 
 # Declare a C++ library
@@ -167,6 +176,10 @@ add_executable(carla_helper src/carla_helper.cpp)
 add_executable(lidar_odometry src/lidar_odometry.cpp)
 
 add_executable(ceres_icp src/ceres_icp.cpp)
+
+add_executable(odometry_node src/odometry/odometry_node.cpp
+        src/odometry/odometry.cpp
+        src/subscriber/point_cloud_subscriber.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -220,6 +233,14 @@ target_link_libraries(ceres_icp
         ${libpointmatcher_LIBRARIES}
         #        ${PCL_LIBRARIES}
         ${CERES_LIBRARIES}
+        )
+
+target_link_libraries(odometry_node
+        ${catkin_LIBRARIES}
+        ${libpointmatcher_LIBRARIES}
+        ${PCL_LIBRARIES}
+        ${YAML_CPP_LIBRARIES}
+        ${ALL_TARGET_LIBRARIES}
         )
 
 #############

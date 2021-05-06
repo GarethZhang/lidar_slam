@@ -1,0 +1,10 @@
+registration_method: NDT   # support: NDT or ICP
+
+filter_method: voxel_filter # support: voxel_filter, no_filter
+
+
+voxel_filter:
+  local_map:
+    leaf_size: [0.6, 0.6, 0.6]
+  frame:
+    leaf_size: [1.3, 1.3, 1.3]
