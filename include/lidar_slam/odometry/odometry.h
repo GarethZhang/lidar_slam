@@ -11,6 +11,8 @@
 
 #include "pointmatcher/PointMatcher.h"
 
+#include "lidar_slam/common/common.h"
+#include "lidar_slam/publisher/odometry_publisher.h"
 #include "lidar_slam/subscriber/point_cloud_subscriber.h"
 #include "lidar_slam/methods/registration/ndt_registration.h"
 #include "lidar_slam/methods/registration/icp_registration.h"
@@ -18,19 +20,15 @@
 
 class Odometry{
 public:
-    using TMat = Eigen::Matrix4d;
-    using PMat = Eigen::MatrixXd;
-    using RMat = Eigen::Matrix3d;
-    using Vec = Eigen::Vector3d;
-
     struct Frame{
         PointCloudData cloud;
-        TMat T_o_s;
+        Common::TMat T_o_s;
     };
 
     Odometry(std::string& yaml_config_fname);
 
-    void updateOdometry();
+    void updateOdometry(PointCloudData::pointCloudTypePtr& cloud,
+                        Common::TMat& init_pose);
 
 private:
     void setConfigs(std::string& yaml_config_fname);

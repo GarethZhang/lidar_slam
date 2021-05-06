@@ -11,21 +11,31 @@ class OdometryNode{
 public:
     OdometryNode(ros::NodeHandle *nodehandle);
 
+    void runOdometry();
+
 private:
     void getParams();
-    bool readData();
+    void readDataFromSub();
     bool isDataEmpty();
-    bool isValidData();
+    void readData();
+    void updateOdometry();
 
     ros::NodeHandle nh_;
 
-    std::string velodyne_topic_, yaml_config_fname_;
+    std::string map_frame_, velodyne_frame_;
+    std::string velodyne_topic_, odom_topic_;
+    std::string yaml_config_fname_;
     float queue_size_;
 
     std::shared_ptr<PointCloudSubscriber> cloud_sub_ptr_;
     std::shared_ptr<Odometry> odometry_ptr_;
+    std::shared_ptr<OdometryPublisher> odometry_pub_ptr_;
 
     std::queue<PointCloudData> queue_;
+
+    Common::TMat T_o_s_odom_ = Common::TMat::Identity();
+
+    PointCloudData curr_cloud_;
 
 };
 

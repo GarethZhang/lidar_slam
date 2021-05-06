@@ -21,7 +21,8 @@ void Odometry::setConfigs(std::string& yaml_config_fname) {
 
 void Odometry::setFilter(YAML::Node& yaml_config_node) {
     if (filter_method_ == "Voxel"){
-        filter_ptr_ = std::make_shared<VoxelFilter> ();
+        filter_ptr_ = std::make_shared<VoxelFilter> (yaml_config_node[filter_method_]);
+        LOG(INFO) << "Filter method" << filter_method_ << "found";
     }
     else{
         LOG(ERROR) << "Filter method" << filter_method_ << "not found";
@@ -31,11 +32,18 @@ void Odometry::setFilter(YAML::Node& yaml_config_node) {
 void Odometry::setScanRegistration(YAML::Node& yaml_config_node) {
     if (registration_method_ == "NDT"){
         registration_ptr_ = std::make_shared<NDTRegistration>(yaml_config_node[registration_method_]);
+        LOG(INFO) << "Scan registration method" << registration_method_ << "found";
     }
     else if (registration_method_ == "ICP"){
         registration_ptr_ = std::make_shared<ICPRegistration> (yaml_config_node[registration_method_]);
+        LOG(INFO) << "Scan registration method" << registration_method_ << "found";
     }
     else{
         LOG(ERROR) << "Scan registration method" << registration_method_ << "not found";
     }
+}
+
+void Odometry::updateOdometry(PointCloudData::pointCloudTypePtr& cloud,
+                              Common::TMat& init_pose) {
+
 }
