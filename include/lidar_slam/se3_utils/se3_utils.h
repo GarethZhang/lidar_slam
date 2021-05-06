@@ -5,7 +5,7 @@
 #ifndef SE3_UTILS_H
 #define SE3_UTILS_H
 
-#include "../common.h"
+#include "lidar_slam/archive/common.h"
 
 template <typename T>
 Eigen::Matrix<T,3,3> get_roll(T roll){

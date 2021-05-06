@@ -5,8 +5,8 @@
 #ifndef NEAREST_NEIGHBOR_H
 #define NEAREST_NEIGHBOR_H
 
-#include "lidar_slam/nanoflann.hpp"
-#include "lidar_slam/common.h"
+#include "lidar_slam/archive/nanoflann.hpp"
+#include "lidar_slam/archive/common.h"
 
 typedef nanoflann::KDTreeEigenMatrixAdaptor<PMat> kd_tree;
 
