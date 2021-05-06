@@ -6,15 +6,21 @@
 #define LIDAR_SLAM_NDT_REGISTRATION_H
 
 #include "registration_method.h"
+#include <pcl/registration/ndt.h>
 
 class NDTRegistration:public RegistrationMethod{
 public:
     NDTRegistration(const YAML::Node& yaml_config_node);
 
-    void setInputTarget(PointCloudData::pointCloudTypePtr& input_cloud);
+    void setInputTarget(PointCloudData::pointCloudTypePtr& target_cloud);
 
-    void scanRegistration();
+    void scanRegistration(PointCloudData::pointCloudTypePtr& source_cloud,
+                          PointCloudData::pointCloudTypePtr& output_cloud,
+                          Common::TMat& init_pose,
+                          Common::TMat& pose);
 
+private:
+    pcl::NormalDistributionsTransform<PointCloudData::pointType, PointCloudData::pointType> ndt_;
 
 };
 

@@ -5,6 +5,9 @@
 #ifndef LIDAR_SLAM_REGISTRATION_METHOD_H
 #define LIDAR_SLAM_REGISTRATION_METHOD_H
 
+#include <yaml-cpp/yaml.h>
+
+#include "lidar_slam/common/common.h"
 #include "lidar_slam/sensor_data/point_cloud_data.h"
 
 class RegistrationMethod{

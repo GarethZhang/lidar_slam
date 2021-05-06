@@ -10,12 +10,12 @@
 
 class VoxelFilter:public FilterMethod{
 public:
-    VoxelFilter();
+    VoxelFilter(const YAML::Node& yaml_config_node);
 
     void filter(PointCloudData::pointCloudTypePtr& input_cloud, PointCloudData::pointCloudTypePtr& output_cloud);
 
 private:
-    pcl::VoxelGrid<PointCloudData::pointType> voxel_filter;
+    pcl::VoxelGrid<PointCloudData::pointType> voxel_filter_;
 };
 
 
