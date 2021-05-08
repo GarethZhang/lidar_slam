@@ -14,9 +14,12 @@ class RegistrationMethod{
 public:
     virtual ~RegistrationMethod() = default;
 
-    virtual void setInputTarget();
+    virtual void setInputTarget(PointCloudData::pointCloudTypePtr& cloud) = 0;
 
-    virtual void scanRegistration();
+    virtual void scanRegistration(PointCloudData::pointCloudTypePtr& source_cloud,
+                                  PointCloudData::pointCloudTypePtr& output_cloud,
+                                  Common::TMat& init_pose,
+                                  Common::TMat& pose) = 0;
 };
 
 #endif //LIDAR_SLAM_REGISTRATION_METHOD_H

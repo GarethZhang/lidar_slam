@@ -1,13 +1,12 @@
-registration_method: NDT   # support: NDT or ICP
-
-filter_method: voxel_filter # support: voxel_filter, no_filter
-
-NDT:
-  trans_eps : 0.01
-  step_size : 0.1
-  res : 1.0
-  max_iter : 30
-
-# voxel filter
-Voxel:
-  leaf_size: [0.5, 0.5, 0.5]
+Odometry:
+  registration_method: NDT   # support: NDT or ICP
+  filter_method: voxel_filter # support: voxel_filter, no_filter
+  NDT:
+    trans_eps : 0.01
+    step_size : 0.1
+    res : 1.0
+    max_iter : 30
+  Voxel:
+    leaf_size: [0.5, 0.5, 0.5]
+  window_size: 10
+  submap_create_dist: 5

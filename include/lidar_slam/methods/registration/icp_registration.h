@@ -13,7 +13,10 @@ public:
 
     void setInputTarget(PointCloudData::pointCloudTypePtr& input_cloud);
 
-    void scanRegistration();
+    void scanRegistration(PointCloudData::pointCloudTypePtr& source_cloud,
+                          PointCloudData::pointCloudTypePtr& output_cloud,
+                          Common::TMat& init_pose,
+                          Common::TMat& pose);
 
 
 };

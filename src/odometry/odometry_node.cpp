@@ -5,7 +5,8 @@
 #include "lidar_slam/odometry/odometry_node.h"
 
 OdometryNode::OdometryNode(ros::NodeHandle *nh):
-        nh_(*nh){
+        nh_(*nh),
+        first_scan_(true){
     getParams();
 
     cloud_sub_ptr_ = std::make_shared<PointCloudSubscriber>(nh_, velodyne_topic_, queue_size_);
@@ -53,8 +54,15 @@ void OdometryNode::runOdometry() {
     while (!isDataEmpty()){
         readData();
 
-        updateOdometry();
+//        updateOdometry();
+        odometry_ptr_->updateOdometry(curr_cloud_, T_o_s_odom_);
+
+        odometry_pub_ptr_->publish(T_o_s_odom_, ros::Time::now());
     }
+}
+
+void OdometryNode::updateOdometry() {
+    odometry_ptr_->updateOdometry(curr_cloud_, T_o_s_odom_);
 }
 
 int main(int argc, char **argv) {

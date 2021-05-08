@@ -26,6 +26,7 @@ private:
     std::string velodyne_topic_, odom_topic_;
     std::string yaml_config_fname_;
     float queue_size_;
+    bool first_scan_;
 
     std::shared_ptr<PointCloudSubscriber> cloud_sub_ptr_;
     std::shared_ptr<Odometry> odometry_ptr_;

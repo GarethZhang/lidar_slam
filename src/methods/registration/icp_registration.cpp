@@ -4,14 +4,17 @@
 
 #include "lidar_slam/methods/registration/icp_registration.h"
 
-ICPRegistration::ICPRegistration(YAML::Node& yaml_config_node) {
+ICPRegistration::ICPRegistration(const YAML::Node& yaml_config_node) {
 
 }
 
-void ICPRegistration::setInputTarget(int &input_cloud) {
+void ICPRegistration::setInputTarget(PointCloudData::pointCloudTypePtr &input_cloud) {
 
 }
 
-void ICPRegistration::scanRegistration() {
+void ICPRegistration::scanRegistration(PointCloudData::pointCloudTypePtr& source_cloud,
+                                       PointCloudData::pointCloudTypePtr& output_cloud,
+                                       Common::TMat& init_pose,
+                                       Common::TMat& pose) {
 
 }
