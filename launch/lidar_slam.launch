@@ -1,9 +1,14 @@
 <launch>
 
 
-  <node name="lidar_odometry" pkg="lidar_slam" type="lidar_odometry" output="screen">
-    <param name="velodyne_topic"          type="string"   value="/velodyne_points" />
-    <param name="icp_config_fname"        type="string"   value="$(find lidar_slam)/cfg/icp/defaultPointToPlaneMinDistDataPointsFilter.yaml" />
+  <node name="odometry_node" pkg="lidar_slam" type="odometry_node" output="screen">
+    <param name="map_frame"                   type="string"   value="/map" />
+    <param name="velodyne_frame"              type="string"   value="/velodyne" />
+    <param name="velodyne_topic"              type="string"   value="/velodyne_points" />
+    <param name="velodyne_ndt_input_topic"    type="string"   value="/velodyne_ndt_input_topic" />
+    <param name="odom_topic"                  type="string"   value="/slam/odom" />
+    <param name="queue_size"                  type="string"   value="10" />
+    <param name="yaml_config_fname"           type="string"   value="$(find lidar_slam)/cfg/odometry/odometry.yaml" />
   </node>
 
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find lidar_slam)/cfg/rviz/lidar_slam.rviz" />

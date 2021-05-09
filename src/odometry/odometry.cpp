@@ -4,7 +4,9 @@
 
 #include "lidar_slam/odometry/odometry.h"
 
-Odometry::Odometry(std::string& yaml_config_fname) {
+Odometry::Odometry(std::string& yaml_config_fname):
+        first_scan_(true),
+        curr_cloud_(new PointCloudData::pointCloudType()){
     setConfigs(yaml_config_fname);
 }
 
@@ -22,26 +24,27 @@ void Odometry::setConfigs(std::string& yaml_config_fname) {
 }
 
 void Odometry::setFilter(YAML::Node& yaml_config_node) {
-    if (filter_method_ == "Voxel"){
+    if (filter_method_ == "voxel_filter"){
         filter_ptr_ = std::make_shared<VoxelFilter> (yaml_config_node[filter_method_]);
-        LOG(INFO) << "Filter method" << filter_method_ << "found";
+        submap_filter_ptr_ = std::make_shared<VoxelFilter> (yaml_config_node[filter_method_]);
+        LOG(INFO) << "Filter method " << filter_method_ << " found";
     }
     else{
-        LOG(ERROR) << "Filter method" << filter_method_ << "not found";
+        LOG(ERROR) << "Filter method " << filter_method_ << " not found";
     }
 }
 
 void Odometry::setScanRegistration(YAML::Node& yaml_config_node) {
     if (registration_method_ == "NDT"){
         registration_ptr_ = std::make_shared<NDTRegistration>(yaml_config_node[registration_method_]);
-        LOG(INFO) << "Scan registration method" << registration_method_ << "found";
+        LOG(INFO) << "Scan registration method " << registration_method_ << " found";
     }
     else if (registration_method_ == "ICP"){
         registration_ptr_ = std::make_shared<ICPRegistration> (yaml_config_node[registration_method_]);
-        LOG(INFO) << "Scan registration method" << registration_method_ << "found";
+        LOG(INFO) << "Scan registration method " << registration_method_ << " found";
     }
     else{
-        LOG(ERROR) << "Scan registration method" << registration_method_ << "not found";
+        LOG(ERROR) << "Scan registration method " << registration_method_ << " not found";
     }
 }
 
@@ -52,6 +55,10 @@ void Odometry::updateOdometry(PointCloudData& cloud,
 
     // read in cloud
     curr_frame_.cloud = cloud;
+
+    // filter the cloud
+    PointCloudData::pointCloudTypePtr filtered_cloud(new PointCloudData::pointCloudType());
+    filter_ptr_->filter(curr_cloud_, filtered_cloud);
 
     // if submaps are empty, it means it's the first scan
     // if not do scan to map registration
@@ -68,15 +75,23 @@ void Odometry::updateOdometry(PointCloudData& cloud,
     else{
         // align the point cloud to submap
         PointCloudData::pointCloudTypePtr aligned_cloud(new PointCloudData::pointCloudType());
-        registration_ptr_->scanRegistration(cloud.cloud_ptr, aligned_cloud, T_o_s_pred_, curr_frame_.T_o_s);
+        registration_ptr_->scanRegistration(filtered_cloud, aligned_cloud, T_o_s_pred_, curr_frame_.T_o_s);
 
         // update incremental pose change
         T_sm1_s_ = T_o_sm1_.inverse() * curr_frame_.T_o_s;
     }
 
+    // update distance travelled since last submap
+    dist_travel_since_lsm_ += sqrt(T_sm1_s_(0, 3) * T_sm1_s_(0, 3) +
+                                   T_sm1_s_(1, 3) * T_sm1_s_(1, 3) +
+                                   T_sm1_s_(2, 3) * T_sm1_s_(2, 3));
+
     // add to submap for every X distance travelled
-    if (getTravelDist(T_o_lsm_, curr_frame_.T_o_s) > submap_create_dist_){
+    if (dist_travel_since_lsm_ > submap_create_dist_){
         updateSubmap(curr_frame_);
+
+        // reset to 0
+        dist_travel_since_lsm_ = 0;
     }
 
 
@@ -86,7 +101,10 @@ void Odometry::updateOdometry(PointCloudData& cloud,
 }
 
 void Odometry::predictSm1S() {
-    if (first_scan_) T_o_s_pred_ = Common::TMat::Identity();
+    if (first_scan_) {
+        T_o_s_pred_ = Common::TMat::Identity();
+        first_scan_ = false;
+    }
     else T_o_s_pred_ = T_o_sm1_ * T_sm1_s_;
 }
 
@@ -105,11 +123,10 @@ void Odometry::updateSubmap(Frame& cloud) {
         *curr_cloud_ += *aligned_submap;
     }
 
-    registration_ptr_->setInputTarget(curr_cloud_);
+    PointCloudData::pointCloudTypePtr filtered_submap(new PointCloudData::pointCloudType());
+    submap_filter_ptr_->filter(curr_cloud_, filtered_submap);
+
+    registration_ptr_->setInputTarget(filtered_submap);
 
     T_o_lsm_ = cloud.T_o_s;
-}
-
-double Odometry::getTravelDist(Common::TMat& T_o_sm1, Common::TMat& T_o_s) {
-    return 0;
 }

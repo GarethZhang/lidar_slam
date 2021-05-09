@@ -6,7 +6,7 @@
 
 OdometryNode::OdometryNode(ros::NodeHandle *nh):
         nh_(*nh),
-        first_scan_(true){
+        frame_num_(0){
     getParams();
 
     cloud_sub_ptr_ = std::make_shared<PointCloudSubscriber>(nh_, velodyne_topic_, queue_size_);
@@ -14,6 +14,8 @@ OdometryNode::OdometryNode(ros::NodeHandle *nh):
     odometry_ptr_ = std::make_shared<Odometry>(yaml_config_fname_);
 
     odometry_pub_ptr_ = std::make_shared<OdometryPublisher>(nh_, odom_topic_, map_frame_, velodyne_frame_, queue_size_);
+
+    cloud_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, velodyne_ndt_input_topic_, velodyne_frame_, queue_size_);
 }
 
 /// get global parameters for odometry setup
@@ -22,10 +24,11 @@ void OdometryNode::getParams() {
     nh_.param<std::string>("velodyne_frame",    velodyne_frame_,        "/velodyne");
 
     nh_.param<std::string>("velodyne_topic",    velodyne_topic_,        "/velodyne_points");
-    nh_.param<std::string>("odom_topic_",       odom_topic_,            "/odom");
+    nh_.param<std::string>("velodyne_ndt_input_topic",    velodyne_ndt_input_topic_,        "/velodyne_ndt_input_topic");
+    nh_.param<std::string>("odom_topic",       odom_topic_,            "/odom");
     nh_.param<float>("queue_size",              queue_size_,            100000);
 
-    nh_.param<std::string>("yaml_config_fname",    yaml_config_fname_,     "");
+    nh_.param<std::string>("yaml_config_fname",    yaml_config_fname_,     "/home/haowei/MEGA/Research/src/ros_ws/src/lidar_slam/cfg/odometry/odometry.yaml");
 }
 
 /// read in most recent data from point cloud subscriber buffer and add to current point cloud buffer
@@ -54,10 +57,12 @@ void OdometryNode::runOdometry() {
     while (!isDataEmpty()){
         readData();
 
-//        updateOdometry();
+        LOG(INFO) << "Process " << frame_num_++ << " frame";
         odometry_ptr_->updateOdometry(curr_cloud_, T_o_s_odom_);
 
-        odometry_pub_ptr_->publish(T_o_s_odom_, ros::Time::now());
+        odometry_pub_ptr_->publish(T_o_s_odom_, ros::Time(curr_cloud_.time));
+
+        cloud_pub_ptr_->publish(curr_cloud_.cloud_ptr, ros::Time(curr_cloud_.time));
     }
 }
 

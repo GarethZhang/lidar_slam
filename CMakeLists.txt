@@ -172,13 +172,17 @@ add_library(nearest_neighbor
 file(GLOB_RECURSE ALL_SRCS "*.cpp")
 file(GLOB_RECURSE NODE_SRCS "*_node.cpp")
 file(GLOB_RECURSE ARCHIVE_SRC "src/archive/*.cpp")
+file(GLOB_RECURSE REMOVE_CMAKE_DEBUG "cmake-build-debug/*")
+file(GLOB_RECURSE REMOVE_CMAKE_RELEASE "cmake-build-release/*")
 list(REMOVE_ITEM ALL_SRCS ${NODE_SRCS})
 list(REMOVE_ITEM ALL_SRCS ${ARCHIVE_SRC})
+list(REMOVE_ITEM ALL_SRCS ${REMOVE_CMAKE_DEBUG})
+list(REMOVE_ITEM ALL_SRCS ${REMOVE_CMAKE_RELEASE})
 
 # Declare a C++ executable
 # With catkin_make all packages are built within a single CMake context
 # The recommended prefix ensures that target names across packages don't collide
-add_executable(carla_helper src/carla_helper.cpp)
+add_executable(carla_helper src/carla_helper_node.cpp)
 
 #add_executable(lidar_odometry src/archive/lidar_odometry.cpp)
 #

@@ -9,8 +9,8 @@ OdometryPublisher::OdometryPublisher(ros::NodeHandle& nh,
                                      std::string& base_frame,
                                      std::string& child_frame,
                                      size_t queue_size):
-        nh_(nh){
-    nh_.advertise<nav_msgs::Odometry>(topic, queue_size);
+        nh_(nh),
+        pub_(nh_.advertise<nav_msgs::Odometry>(topic, queue_size)){
     odometry_.header.frame_id = base_frame;
     odometry_.child_frame_id = child_frame;
 }

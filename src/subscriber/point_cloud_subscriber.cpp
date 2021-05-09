@@ -19,7 +19,9 @@ void PointCloudSubscriber::callBack(const sensor_msgs::PointCloud2ConstPtr &msg)
 
 void PointCloudSubscriber::parseData(std::queue<PointCloudData> &point_cloud_queue) {
     mutex_buf_.lock();
-    point_cloud_queue.push(queue_.front());
-    queue_.pop();
+    if (!queue_.empty()){
+        point_cloud_queue.push(queue_.front());
+        queue_.pop();
+    }
     mutex_buf_.unlock();
 }

@@ -6,7 +6,7 @@ Odometry:
     step_size : 0.1
     res : 1.0
     max_iter : 30
-  Voxel:
+  voxel_filter:
     leaf_size: [0.5, 0.5, 0.5]
   window_size: 10
   submap_create_dist: 5

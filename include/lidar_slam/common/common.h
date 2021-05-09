@@ -10,10 +10,10 @@
 
 class Common{
 public:
-    using TMat = Eigen::Matrix4d;
-    using PMat = Eigen::MatrixXd;
-    using RMat = Eigen::Matrix3d;
-    using Vec = Eigen::Vector3d;
+    using TMat = Eigen::Matrix4f;
+    using PMat = Eigen::MatrixXf;
+    using RMat = Eigen::Matrix3f;
+    using Vec = Eigen::Vector3f;
 };
 
 #endif //LIDAR_SLAM_COMMON_H

@@ -23,14 +23,15 @@ private:
     ros::NodeHandle nh_;
 
     std::string map_frame_, velodyne_frame_;
-    std::string velodyne_topic_, odom_topic_;
+    std::string velodyne_topic_, odom_topic_, velodyne_ndt_input_topic_;
     std::string yaml_config_fname_;
     float queue_size_;
-    bool first_scan_;
+    size_t frame_num_;
 
     std::shared_ptr<PointCloudSubscriber> cloud_sub_ptr_;
     std::shared_ptr<Odometry> odometry_ptr_;
     std::shared_ptr<OdometryPublisher> odometry_pub_ptr_;
+    std::shared_ptr<PointCloudPublisher> cloud_pub_ptr_;
 
     std::queue<PointCloudData> queue_;
 

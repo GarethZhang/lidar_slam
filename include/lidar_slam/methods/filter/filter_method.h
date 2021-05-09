@@ -12,9 +12,9 @@
 
 class FilterMethod{
 public:
-    FilterMethod();
+    virtual ~FilterMethod() = default;
 
-    virtual void filter(PointCloudData::pointCloudTypePtr& input_cloud, PointCloudData::pointCloudTypePtr& output_cloud);
+    virtual void filter(PointCloudData::pointCloudTypePtr& input_cloud, PointCloudData::pointCloudTypePtr& output_cloud) = 0;
 };
 
 #endif //LIDAR_SLAM_FILTER_METHODS_H

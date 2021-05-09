@@ -13,6 +13,7 @@
 
 #include "lidar_slam/common/common.h"
 #include "lidar_slam/publisher/odometry_publisher.h"
+#include "lidar_slam/publisher/point_cloud_publisher.h"
 #include "lidar_slam/subscriber/point_cloud_subscriber.h"
 #include "lidar_slam/methods/registration/ndt_registration.h"
 #include "lidar_slam/methods/registration/icp_registration.h"
@@ -36,7 +37,6 @@ private:
     void setScanRegistration(YAML::Node& yaml_config_node);
     void predictSm1S();
     void updateSubmap(Frame& cloud);
-    double getTravelDist(Common::TMat& T_o_sm1, Common::TMat& T_o_s);
 
     Frame curr_frame_;
 
@@ -48,12 +48,12 @@ private:
 
     size_t window_size_;
 
-    float submap_create_dist_;
+    float submap_create_dist_, dist_travel_since_lsm_;
 
     std::string registration_method_, filter_method_;
 
     std::shared_ptr<RegistrationMethod> registration_ptr_;
-    std::shared_ptr<FilterMethod> filter_ptr_;
+    std::shared_ptr<FilterMethod> filter_ptr_, submap_filter_ptr_;
 
     Common::TMat T_o_s_pred_, T_o_sm1_, T_sm1_s_, T_o_lsm_;
 
