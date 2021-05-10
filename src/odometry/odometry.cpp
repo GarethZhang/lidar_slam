@@ -4,10 +4,19 @@
 
 #include "lidar_slam/odometry/odometry.h"
 
-Odometry::Odometry(std::string& yaml_config_fname):
+Odometry::Odometry(ros::NodeHandle& nh,
+                   std::string& yaml_config_fname):
+        nh_(nh),
         first_scan_(true),
         curr_cloud_(new PointCloudData::pointCloudType()){
     setConfigs(yaml_config_fname);
+
+    setPublishConfigs();
+
+    tf_broadcaster_ptr_ = std::make_shared<TFBroadcaster>();
+
+    submap_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, submap_topic_, submap_frame_, 10);
+
 }
 
 void Odometry::setConfigs(std::string& yaml_config_fname) {
@@ -21,6 +30,11 @@ void Odometry::setConfigs(std::string& yaml_config_fname) {
 
     setFilter(yaml_config_node);
     setScanRegistration(yaml_config_node);
+}
+
+void Odometry::setPublishConfigs() {
+    submap_topic_ = "/submap_points";
+    submap_frame_ = "/map";
 }
 
 void Odometry::setFilter(YAML::Node& yaml_config_node) {
@@ -98,6 +112,9 @@ void Odometry::updateOdometry(PointCloudData& cloud,
     // update last pose and current pose
     T_o_sm1_ = curr_frame_.T_o_s;
     T_o_s_odom = curr_frame_.T_o_s;
+
+    // publish
+    submap_pub_ptr_->publish(curr_cloud_, ros::Time(cloud.time));
 }
 
 void Odometry::predictSm1S() {

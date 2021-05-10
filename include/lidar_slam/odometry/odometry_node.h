@@ -22,8 +22,8 @@ private:
 
     ros::NodeHandle nh_;
 
-    std::string map_frame_, velodyne_frame_;
-    std::string velodyne_topic_, odom_topic_, velodyne_ndt_input_topic_;
+    std::string map_frame_, velodyne_frame_, submap_frame_;
+    std::string velodyne_topic_, odom_topic_, velodyne_ndt_input_topic_, submap_topic_;
     std::string yaml_config_fname_;
     float queue_size_;
     size_t frame_num_;
@@ -32,6 +32,7 @@ private:
     std::shared_ptr<Odometry> odometry_ptr_;
     std::shared_ptr<OdometryPublisher> odometry_pub_ptr_;
     std::shared_ptr<PointCloudPublisher> cloud_pub_ptr_;
+    std::shared_ptr<TFBroadcaster> tf_broadcaster_ptr_;
 
     std::queue<PointCloudData> queue_;
 

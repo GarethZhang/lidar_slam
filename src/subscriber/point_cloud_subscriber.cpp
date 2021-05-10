@@ -13,6 +13,7 @@ void PointCloudSubscriber::callBack(const sensor_msgs::PointCloud2ConstPtr &msg)
     mutex_buf_.lock();
     PointCloudData point_cloud;
     pcl::fromROSMsg(*msg, *point_cloud.cloud_ptr);
+    point_cloud.time = msg->header.stamp.toSec();
     queue_.push(point_cloud);
     mutex_buf_.unlock();
 }

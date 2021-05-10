@@ -15,6 +15,7 @@
 #include "lidar_slam/publisher/odometry_publisher.h"
 #include "lidar_slam/publisher/point_cloud_publisher.h"
 #include "lidar_slam/subscriber/point_cloud_subscriber.h"
+#include "lidar_slam/tf_broadcaster/tf_broadcaster.h"
 #include "lidar_slam/methods/registration/ndt_registration.h"
 #include "lidar_slam/methods/registration/icp_registration.h"
 #include "lidar_slam/methods/filter/voxel_filter.h"
@@ -26,21 +27,27 @@ public:
         Common::TMat T_o_s;
     };
 
-    Odometry(std::string& yaml_config_fname);
+    Odometry(ros::NodeHandle& nh, std::string& yaml_config_fname);
 
     void updateOdometry(PointCloudData& cloud,
                         Common::TMat& T_o_s_odom);
 
 private:
     void setConfigs(std::string& yaml_config_fname);
+    void setPublishConfigs();
     void setFilter(YAML::Node& yaml_config_node);
     void setScanRegistration(YAML::Node& yaml_config_node);
     void predictSm1S();
     void updateSubmap(Frame& cloud);
 
+    ros::NodeHandle nh_;
+
     Frame curr_frame_;
 
     PointCloudData::pointCloudTypePtr curr_cloud_;
+
+    std::shared_ptr<PointCloudPublisher> submap_pub_ptr_;
+    std::shared_ptr<TFBroadcaster> tf_broadcaster_ptr_;
 
     std::deque<Frame> submaps_;
 
@@ -51,6 +58,7 @@ private:
     float submap_create_dist_, dist_travel_since_lsm_;
 
     std::string registration_method_, filter_method_;
+    std::string submap_topic_, submap_frame_;
 
     std::shared_ptr<RegistrationMethod> registration_ptr_;
     std::shared_ptr<FilterMethod> filter_ptr_, submap_filter_ptr_;

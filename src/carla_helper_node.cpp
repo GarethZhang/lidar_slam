@@ -125,7 +125,7 @@ int main(int argc, char** argv)
             laser_cloud_msg->points.push_back(point);
             laser_cloud_msg->width++;
         }
-        laser_cloud_msg->header.stamp = (uint64_t) (timestamp * 1e6);
+        laser_cloud_msg->header.stamp = ros::Time::now().toSec() * 1e6;
         laser_cloud_msg->header.frame_id = "/velodyne";
         laser_cloud_msg->height = 1;
 
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
         uint32_t sec = (long) timestamp;
         uint32_t nsec = (long) ((timestamp - sec) * 1e9);
-        pose_stamped.header.stamp = ros::Time(sec, nsec);
+        pose_stamped.header.stamp = ros::Time::now();
         pose_stamped.header.frame_id = "/map";
         pub_laser_pose.publish(pose_stamped);
 

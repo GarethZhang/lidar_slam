@@ -4,8 +4,10 @@
   <node name="odometry_node" pkg="lidar_slam" type="odometry_node" output="screen">
     <param name="map_frame"                   type="string"   value="/map" />
     <param name="velodyne_frame"              type="string"   value="/velodyne" />
+    <param name="submap_frame"                type="string"   value="/submap" />
     <param name="velodyne_topic"              type="string"   value="/velodyne_points" />
     <param name="velodyne_ndt_input_topic"    type="string"   value="/velodyne_ndt_input_topic" />
+    <param name="submap_topic"                type="string"   value="/submap_points" />
     <param name="odom_topic"                  type="string"   value="/slam/odom" />
     <param name="queue_size"                  type="string"   value="10" />
     <param name="yaml_config_fname"           type="string"   value="$(find lidar_slam)/cfg/odometry/odometry.yaml" />
