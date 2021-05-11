@@ -47,6 +47,7 @@ private:
     PointCloudData::pointCloudTypePtr curr_cloud_;
 
     std::shared_ptr<PointCloudPublisher> submap_pub_ptr_;
+    std::shared_ptr<PointCloudPublisher> filter_cloud_pub_ptr_;
     std::shared_ptr<TFBroadcaster> tf_broadcaster_ptr_;
 
     std::deque<Frame> submaps_;
@@ -58,7 +59,7 @@ private:
     float submap_create_dist_, dist_travel_since_lsm_;
 
     std::string registration_method_, filter_method_;
-    std::string submap_topic_, submap_frame_;
+    std::string submap_topic_, filter_cloud_topic_, submap_frame_, filter_cloud_frame_;
 
     std::shared_ptr<RegistrationMethod> registration_ptr_;
     std::shared_ptr<FilterMethod> filter_ptr_, submap_filter_ptr_;

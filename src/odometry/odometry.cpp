@@ -16,6 +16,7 @@ Odometry::Odometry(ros::NodeHandle& nh,
     tf_broadcaster_ptr_ = std::make_shared<TFBroadcaster>();
 
     submap_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, submap_topic_, submap_frame_, 10);
+    filter_cloud_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, filter_cloud_topic_, filter_cloud_frame_, 10);
 
 }
 
@@ -34,7 +35,9 @@ void Odometry::setConfigs(std::string& yaml_config_fname) {
 
 void Odometry::setPublishConfigs() {
     submap_topic_ = "/submap_points";
+    filter_cloud_topic_ = "/filter_cloud";
     submap_frame_ = "/map";
+    filter_cloud_frame_ = "/map";
 }
 
 void Odometry::setFilter(YAML::Node& yaml_config_node) {
@@ -72,13 +75,16 @@ void Odometry::updateOdometry(PointCloudData& cloud,
 
     // filter the cloud
     PointCloudData::pointCloudTypePtr filtered_cloud(new PointCloudData::pointCloudType());
-    filter_ptr_->filter(curr_cloud_, filtered_cloud);
+    PointCloudData::pointCloudTypePtr aligned_cloud(new PointCloudData::pointCloudType());
+
+    filter_ptr_->filter(cloud.cloud_ptr, filtered_cloud);
 
     // if submaps are empty, it means it's the first scan
     // if not do scan to map registration
     if (submaps_.empty()){
         // estimate is identity matrix
         curr_frame_.T_o_s = T_o_s_pred_;
+        aligned_cloud = filtered_cloud;
 
         // add first frame to first submap
         updateSubmap(curr_frame_);
@@ -88,7 +94,6 @@ void Odometry::updateOdometry(PointCloudData& cloud,
     }
     else{
         // align the point cloud to submap
-        PointCloudData::pointCloudTypePtr aligned_cloud(new PointCloudData::pointCloudType());
         registration_ptr_->scanRegistration(filtered_cloud, aligned_cloud, T_o_s_pred_, curr_frame_.T_o_s);
 
         // update incremental pose change
@@ -115,6 +120,7 @@ void Odometry::updateOdometry(PointCloudData& cloud,
 
     // publish
     submap_pub_ptr_->publish(curr_cloud_, ros::Time(cloud.time));
+    filter_cloud_pub_ptr_->publish(aligned_cloud, ros::Time(cloud.time));
 }
 
 void Odometry::predictSm1S() {
