@@ -1,11 +1,15 @@
 Odometry:
-  registration_method: NDT   # support: NDT or ICP
+  registration_method: ICP   # support: NDT or ICP
   filter_method: voxel_filter # support: voxel_filter, no_filter
   NDT:
     trans_eps : 0.01
     step_size : 0.1
     res : 1.0
     max_iter : 30
+  ICP:
+    max_corr_dist: 0.5
+    max_iter: 30
+    trans_eps : 0.01
   voxel_filter:
     leaf_size: [0.5, 0.5, 0.5]
   window_size: 10

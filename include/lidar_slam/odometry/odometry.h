@@ -14,6 +14,7 @@
 #include "lidar_slam/common/common.h"
 #include "lidar_slam/publisher/odometry_publisher.h"
 #include "lidar_slam/publisher/point_cloud_publisher.h"
+#include "lidar_slam/publisher/trajectory_publisher.h"
 #include "lidar_slam/subscriber/point_cloud_subscriber.h"
 #include "lidar_slam/tf_broadcaster/tf_broadcaster.h"
 #include "lidar_slam/methods/registration/ndt_registration.h"

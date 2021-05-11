@@ -17,6 +17,8 @@ OdometryNode::OdometryNode(ros::NodeHandle *nh):
 
     cloud_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, velodyne_ndt_input_topic_, velodyne_frame_, queue_size_);
 
+    trajectory_pub_ptr_ = std::make_shared<TrajectoryPublisher>(nh_, trajectory_topic_, map_frame_, max_path_length_, queue_size_);
+
     tf_broadcaster_ptr_ = std::make_shared<TFBroadcaster>();
 }
 
@@ -27,9 +29,11 @@ void OdometryNode::getParams() {
 
     nh_.param<std::string>("velodyne_topic",    velodyne_topic_,        "/velodyne_points");
     nh_.param<std::string>("velodyne_ndt_input_topic",    velodyne_ndt_input_topic_,        "/velodyne_ndt_input_topic");
-    nh_.param<std::string>("submap_topic",    submap_topic_,        "/submap");
+    nh_.param<std::string>("trajectory_topic",    trajectory_topic_,        "/trajectory");
     nh_.param<std::string>("odom_topic",       odom_topic_,            "/odom");
     nh_.param<float>("queue_size",              queue_size_,            100000);
+
+    nh_.param<int>("max_path_length",    max_path_length_,        200);
 
     nh_.param<std::string>("yaml_config_fname",    yaml_config_fname_,     "/home/haowei/MEGA/Research/src/ros_ws/src/lidar_slam/cfg/odometry/odometry.yaml");
 }
@@ -68,6 +72,8 @@ void OdometryNode::runOdometry() {
         cloud_pub_ptr_->publish(curr_cloud_.cloud_ptr, ros::Time(curr_cloud_.time));
 
         tf_broadcaster_ptr_->sendTransform(T_o_s_odom_, map_frame_, velodyne_frame_, ros::Time(curr_cloud_.time));
+
+        trajectory_pub_ptr_->publishTrajectory(T_o_s_odom_, ros::Time(curr_cloud_.time));
     }
 }
 
