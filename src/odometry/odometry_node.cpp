@@ -15,7 +15,7 @@ OdometryNode::OdometryNode(ros::NodeHandle *nh):
 
     odometry_pub_ptr_ = std::make_shared<OdometryPublisher>(nh_, odom_topic_, map_frame_, velodyne_frame_, queue_size_);
 
-    cloud_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, velodyne_ndt_input_topic_, velodyne_frame_, queue_size_);
+//    cloud_pub_ptr_ = std::make_shared<PointCloudPublisher>(nh_, velodyne_ndt_input_topic_, velodyne_frame_, queue_size_);
 
     trajectory_pub_ptr_ = std::make_shared<TrajectoryPublisher>(nh_, trajectory_topic_, map_frame_, max_path_length_, queue_size_);
 
@@ -69,7 +69,7 @@ void OdometryNode::runOdometry() {
 
         odometry_pub_ptr_->publish(T_o_s_odom_, ros::Time(curr_cloud_.time));
 
-        cloud_pub_ptr_->publish(curr_cloud_.cloud_ptr, ros::Time(curr_cloud_.time));
+//        cloud_pub_ptr_->publish(curr_cloud_.cloud_ptr, ros::Time(curr_cloud_.time));
 
         tf_broadcaster_ptr_->sendTransform(T_o_s_odom_, map_frame_, velodyne_frame_, ros::Time(curr_cloud_.time));
 

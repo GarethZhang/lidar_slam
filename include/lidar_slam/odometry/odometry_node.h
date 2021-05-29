@@ -32,7 +32,7 @@ private:
     std::shared_ptr<PointCloudSubscriber> cloud_sub_ptr_;
     std::shared_ptr<Odometry> odometry_ptr_;
     std::shared_ptr<OdometryPublisher> odometry_pub_ptr_;
-    std::shared_ptr<PointCloudPublisher> cloud_pub_ptr_;
+//    std::shared_ptr<PointCloudPublisher> cloud_pub_ptr_;
     std::shared_ptr<TrajectoryPublisher> trajectory_pub_ptr_;
     std::shared_ptr<TFBroadcaster> tf_broadcaster_ptr_;
 
